@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Level Quiz (10 Questions Each Level)</title>
+
+<style>
+body {
+    background: radial-gradient(circle, #1a0033, #000);
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+.game-container { padding: 40px; animation: fadeIn 1.2s ease-in-out; }
+
+.title, #level-title {
+    font-size: 2.5rem;
+    text-shadow: 0 0 20px #ff00ff;
+    animation: float 2s infinite alternate;
+}
+
+.btn {
+    padding: 15px 40px;
+    background: transparent;
+    border: 2px solid #ff00ff;
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    border-radius: 8px;
+    margin: 10px;
+    transition: 0.3s ease;
+}
+.glow { box-shadow: 0 0 15px #ff00ff; }
+.btn:hover { background: #ff00ff; transform: scale(1.1); }
+
+.hidden { display: none; }
+
+.progress-bar {
+    width: 80%;
+    height: 15px;
+    background: #333;
+    border-radius: 20px;
+    margin: 20px auto;
+}
+#progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff00cc, #6600ff);
+    border-radius: 20px;
+    transition: width 0.5s ease;
+}
+
+.answer {
+    padding: 15px;
+    margin: 10px auto;
+    width: 60%;
+    background: #111;
+    border: 2px solid #6600ff;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s ease;
+    font-size: 1.2rem;
+}
+.answer:hover { background: #6600ff; transform: scale(1.05); }
+.correct { background: #00cc66 !important; }
+.wrong { background: #cc0033 !important; }
+
+@keyframes float { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+
+<body>
+
+<div class="game-container">
+
+    <div id="subject-screen">
+        <h1 class="title">Choose a Subject</h1>
+        <button class="btn glow subject-btn" data-subject="math">Math</button>
+        <button class="btn glow subject-btn" data-subject="science">Science</button>
+        <button class="btn glow subject-btn" data-subject="gk">General Knowledge</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <h2 id="level-title"></h2>
+        <div class="progress-bar"><div id="progress"></div></div>
+        <h2 id="question-text"></h2>
+        <div id="answers"></div>
+    </div>
+
+    <div id="end-screen" class="hidden">
+        <h1 class="title">?? You finished all levels!</h1>
+        <h2>Your Score: <span id="final-score"></span></h2>
+        <button id="restart-btn" class="btn glow">Restart Game</button>
+    </div>
+
+</div>
+
+<script>
+const subjectScreen = document.getElementById("subject-screen");
+const quizScreen = document.getElementById("quiz-screen");
+const endScreen = document.getElementById("end-screen");
+
+const levelTitle = document.getElementById("level-title");
+const progressBar = document.getElementById("progress");
+const questionText = document.getElementById("question-text");
+const answersDiv = document.getElementById("answers");
+const finalScore = document.getElementById("final-score");
+
+let currentSubject = "";
+let currentLevelIndex = 0;
+let currentQuestion = 0;
+let score = 0;
+
+const levels = ["Easy", "Medium", "Hard"];
+
+// -----------------------------------
+// 90 QUESTIONS (10 per level × 3 subjects × 3 levels)
+// -----------------------------------
+const quizData = {
+
+    math: {
+        Easy: [
+            { q: "2 + 2 =", a: ["3", "4", "5"], correct: 1 },
+            { q: "5 + 3 =", a: ["6", "8", "9"], correct: 1 },
+            { q: "10 - 4 =", a: ["6", "7", "8"], correct: 0 },
+            { q: "7 + 1 =", a: ["9", "8", "10"], correct: 1 },
+            { q: "3 + 6 =", a: ["8", "9", "10"], correct: 1 },
+            { q: "1 + 9 =", a: ["10", "11", "9"], correct: 0 },
+            { q: "6 - 2 =", a: ["3", "4", "5"], correct: 1 },
+            { q: "9 - 3 =", a: ["7", "5", "6"], correct: 2 },
+            { q: "4 + 4 =", a: ["8", "9", "10"], correct: 0 },
+            { q: "8 - 5 =", a: ["1", "2", "3"], correct: 2 }
+        ],
+
+        Medium: [
+            { q: "12 × 3 =", a: ["36", "40", "30"], correct: 0 },
+            { q: "25 ÷ 5 =", a: ["4", "5", "6"], correct: 1 },
+            { q: "18 ÷ 2 =", a: ["6", "9", "10"], correct: 1 },
+            { q: "14 × 2 =", a: ["28", "30", "24"], correct: 0 },
+            { q: "9 × 5 =", a: ["45", "40", "50"], correct: 0 },
+            { q: "30 ÷ 3 =", a: ["9", "10", "8"], correct: 1 },
+            { q: "7 × 6 =", a: ["42", "48", "36"], correct: 0 },
+            { q: "11 × 2 =", a: ["21", "20", "22"], correct: 2 },
+            { q: "45 ÷ 9 =", a: ["4", "5", "6"], correct: 1 },
+            { q: "8 × 4 =", a: ["32", "34", "30"], correct: 0 }
+        ],
+
+        Hard: [
+            { q: "15² =", a: ["215", "225", "235"], correct: 1 },
+            { q: "v144 =", a: ["10", "12", "14"], correct: 1 },
+            { q: "20% of 200 =", a: ["20", "30", "40"], correct: 2 },
+            { q: "Solve: 8³ =", a: ["512", "256", "128"], correct: 0 },
+            { q: "v169 =", a: ["11", "12", "13"], correct: 2 },
+            { q: "50% of 90 =", a: ["40", "45", "50"], correct: 1 },
+            { q: "12² =", a: ["124", "144", "154"], correct: 1 },
+            { q: "v225 =", a: ["10", "15", "20"], correct: 1 },
+            { q: "30% of 300 =", a: ["60", "90", "100"], correct: 1 },
+            { q: "25² =", a: ["525", "625", "725"], correct: 1 }
+        ]
+    },
+
+    science: {
+        Easy: [
+            { q: "Water freezes at ___ °C", a: ["0", "10", "-5"], correct: 0 },
+            { q: "Earth is a ___", a: ["Star", "Planet", "Comet"], correct: 1 },
+            { q: "We breathe ___", a: ["Oxygen", "Carbon", "Nitrogen"], correct: 0 },
+            { q: "Sun is a ___", a: ["Star", "Planet", "Gas"], correct: 0 },
+            { q: "Plants make food using ___", a: ["Photosynthesis", "Breathing", "Sleeping"], correct: 0 },
+            { q: "Human heart has ___ chambers", a: ["2", "3", "4"], correct: 2 },
+            { q: "The moon is a ___", a: ["Star", "Planet", "Satellite"], correct: 2 },
+            { q: "Water formula is ___", a: ["CO2", "H2O", "O2"], correct: 1 },
+            { q: "We smell using our ___", a: ["Eyes", "Ears", "Nose"], correct: 2 },
+            { q: "Fish breathe through ___", a: ["Lungs", "Gills", "Skin"], correct: 1 }
+        ],
+
+        Medium: [
+            { q: "Sunlight is also called ___", a: ["UV", "Radiation", "Solar energy"], correct: 2 },
+            { q: "The gas plants give out", a: ["Oxygen", "Carbon", "Hydrogen"], correct: 0 },
+            { q: "Earth revolves around ___", a: ["Moon", "Sun", "Mars"], correct: 1 },
+            { q: "Force is measured in ___", a: ["Newton", "Pascal", "Volt"], correct: 0 },
+            { q: "Sound travels fastest in ___", a: ["Air", "Water", "Solid"], correct: 2 },
+            { q: "Atoms make up ___", a: ["Cells", "Everything", "Water only"], correct: 1 },
+            { q: "Birds have ___ bones", a: ["Hollow", "Solid", "Liquid"], correct: 0 },
+            { q: "Largest organ in body", a: ["Heart", "Skin", "Brain"], correct: 1 },
+            { q: "Electricity is measured in ___", a: ["Ampere", "Watt", "Kelvin"], correct: 0 },
+            { q: "Human body has ___ bones", a: ["206", "201", "210"], correct: 0 }
+        ],
+
+        Hard: [
+            { q: "H2SO4 is ___", a: ["Nitric acid", "Sulfuric acid", "Carbonic acid"], correct: 1 },
+            { q: "Einstein discovered ___", a: ["Gravity", "Relativity", "Evolution"], correct: 1 },
+            { q: "Skin's outer layer is ___", a: ["Dermis", "Epidermis", "Core"], correct: 1 },
+            { q: "Plants reproduce via ___", a: ["Photosynthesis", "Pollination", "Filtration"], correct: 1 },
+            { q: "Speed of light is ___", a: ["3×108 m/s", "3×106 m/s", "3×104 m/s"], correct: 0 },
+            { q: "Heart beats per minute", a: ["72", "60", "55"], correct: 0 },
+            { q: "CO2 is ___", a: ["Carbon dioxide", "Carbon monoxide", "Oxygen"], correct: 0 },
+            { q: "The powerhouse of cell", a: ["Nucleus", "Mitochondria", "Ribosome"], correct: 1 },
+            { q: "Blood pH level is ___", a: ["7.4", "5.4", "9.0"], correct: 0 },
+            { q: "DNA expands to ___", a: ["Deoxyribonucleic Acid", "Dioxygen Acid", "Dual Acid"], correct: 0 }
+        ]
+    },
+
+    gk: {
+        Easy: [
+            { q: "Days in a week?", a: ["5", "7", "9"], correct: 1 },
+            { q: "Highest mountain?", a: ["K2", "Everest", "Kanchenjunga"], correct: 1 },
+            { q: "Capital of India?", a: ["Delhi", "Mumbai", "Kolkata"], correct: 0 },
+            { q: "Fastest land animal?", a: ["Cheetah", "Lion", "Tiger"], correct: 0 },
+            { q: "Largest continent?", a: ["Asia", "Europe", "Africa"], correct: 0 },
+            { q: "National bird of India?", a: ["Peacock", "Sparrow", "Crow"], correct: 0 },
+            { q: "Planet nearest to sun?", a: ["Earth", "Mercury", "Mars"], correct: 1 },
+            { q: "River Ganga flows into ___", a: ["Arabian Sea", "Bay of Bengal", "Indian Ocean"], correct: 1 },
+            { q: "Largest country?", a: ["USA", "Russia", "India"], correct: 1 },
+            { q: "The Taj Mahal is in ___", a: ["Delhi", "Mumbai", "Agra"], correct: 2 }
+        ],
+
+        Medium: [
+            { q: "Capital of Japan?", a: ["Tokyo", "Osaka", "Kyoto"], correct: 0 },
+            { q: "UNO formed in ___", a: ["1940", "1945", "1950"], correct: 1 },
+            { q: "Largest ocean?", a: ["Pacific", "Atlantic", "Indian"], correct: 0 },
+            { q: "Father of Computer?", a: ["Turing", "Newton", "Charles Babbage"], correct: 2 },
+            { q: "Olympics occur every ___ years", a: ["2", "3", "4"], correct: 2 },
+            { q: "Smallest continent?", a: ["Australia", "Europe", "Africa"], correct: 0 },
+            { q: "World’s longest river?", a: ["Amazon", "Nile", "Yangtze"], correct: 1 },
+            { q: "Which is a programming language?", a: ["HTML", "Python", "Excel"], correct: 1 },
+            { q: "Currency of China?", a: ["Dollar", "Yen", "Yuan"], correct: 2 },
+            { q: "Light year measures ___", a: ["Distance", "Speed", "Brightness"], correct: 0 }
+        ],
+
+        Hard: [
+            { q: "UNO stands for ___", a: ["United Nations Org.", "Union Nations", "United Naval Org."], correct: 0 },
+            { q: "WW2 ended in ___", a: ["1942", "1945", "1950"], correct: 1 },
+            { q: "Author of 'Hamlet'?", a: ["Milton", "Shakespeare", "Keats"], correct: 1 },
+            { q: "First President of India?", a: ["Rajendra Prasad", "Nehru", "Gandhi"], correct: 0 },
+            { q: "Currency of Germany?", a: ["Euro", "Pound", "Mark"], correct: 0 },
+            { q: "Nobel Prize started in ___", a: ["1901", "1910", "1920"], correct: 0 },
+            { q: "World's largest desert?", a: ["Sahara", "Gobi", "Arabian"], correct: 0 },
+            { q: "UNICEF HQ is in ___", a: ["Paris", "New York", "London"], correct: 1 },
+            { q: "Bharat Ratna started in ___", a: ["1947", "1954", "1960"], correct: 1 },
+            { q: "First man in space?", a: ["Armstrong", "Gagarin", "Glenn"], correct: 1 }
+        ]
+    }
+};
+
+// -----------------------------------
+
+document.querySelectorAll(".subject-btn").forEach(btn => {
+    btn.onclick = () => {
+        currentSubject = btn.dataset.subject;
+        startLevel(0);
+    };
+});
+
+function startLevel(levelIndex) {
+    currentLevelIndex = levelIndex;
+    currentQuestion = 0;
+
+    subjectScreen.classList.add("hidden");
+    quizScreen.classList.remove("hidden");
+
+    loadQuestion();
+}
+
+function loadQuestion() {
+    const level = levels[currentLevelIndex];
+    const questions = quizData[currentSubject][level];
+
+    levelTitle.textContent = `${currentSubject.toUpperCase()} - ${level} Level`;
+
+    let q = questions[currentQuestion];
+    questionText.textContent = q.q;
+
+    progressBar.style.width = ((currentQuestion / questions.length) * 100) + "%";
+
+    answersDiv.innerHTML = "";
+    q.a.forEach((answer, index) => {
+        let btn = document.createElement("div");
+        btn.classList.add("answer");
+        btn.textContent = answer;
+
+        btn.onclick = () => checkAnswer(btn, index === q.correct);
+        answersDiv.appendChild(btn);
+    });
+}
+
+function checkAnswer(elem, isCorrect) {
+    if (isCorrect) score++;
+
+    elem.classList.add(isCorrect ? "correct" : "wrong");
+
+    setTimeout(() => nextQuestion(), 700);
+}
+
+function nextQuestion() {
+    const level = levels[currentLevelIndex];
+    const questions = quizData[currentSubject][level];
+
+    currentQuestion++;
+
+    if (currentQuestion < questions.length) {
+        loadQuestion();
+    } else {
+        nextLevel();
+    }
+}
+
+function nextLevel() {
+    if (currentLevelIndex < levels.length - 1) {
+        startLevel(currentLevelIndex + 1);
+    } else {
+        endGame();
+    }
+}
+
+function endGame() {
+    quizScreen.classList.add("hidden");
+    endScreen.classList.remove("hidden");
+
+    let totalQuestions =
+        levels.reduce((sum, lvl) =>
+            sum + quizData[currentSubject][lvl].length, 0);
+
+    finalScore.textContent = `${score} / ${totalQuestions}`;
+}
+
+document.getElementById("restart-btn").onclick = () => location.reload();
+</script>
+
+</body>
+</html>
